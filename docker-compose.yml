@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -9,25 +7,48 @@ services:
       - "3000:3000"
     environment:
       - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USERNAME=admin
+      - DB_PASSWORD=reallyadmin
+      - DB_NAME=todo
       - REDIS_HOST=redis
+      - APP_ENV=develop
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
     command: npm run start:dev
+    networks:
+      - backend
 
   db:
     image: postgres:15-alpine
     ports:
-      - "5432:5432"
+      - "54320:5432"
     environment:
-      - POSTGRES_USER=${DB_USERNAME}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=reallyadmin
+      - POSTGRES_DB=todo
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command:
+      - "postgres"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "listen_addresses=*"
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d todo" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -35,7 +56,19 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
   redis_data:
+
+
+networks:
+  backend:
+    driver: bridge
