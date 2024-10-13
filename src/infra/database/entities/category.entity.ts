@@ -1,14 +1,5 @@
-import {
-  Entity,
-  Column,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  JoinColumn,
-} from "typeorm";
-import { TaskEntity } from "./task.entity";
-import { UserEntity } from "./user.entity";
-import { UserCategoryEntity } from "./userCategory.entity";
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { TaskCategoryEntity } from "./taskCategory.entity";
 
 @Entity("categories")
 export class CategoryEntity {
@@ -20,10 +11,6 @@ export class CategoryEntity {
 
   @Column()
   name: string;
-
-  @OneToMany(() => UserCategoryEntity, (userCategory) => userCategory.category)
-  userCategories: UserCategoryEntity[];
-
-  @OneToMany(() => TaskEntity, (task) => task.category)
-  tasks: TaskEntity[];
+  @OneToMany(() => TaskCategoryEntity, (taskCategory) => taskCategory.category)
+  taskCategories: TaskCategoryEntity[];
 }

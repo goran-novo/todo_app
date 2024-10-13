@@ -6,22 +6,22 @@ import {
   CreateDateColumn,
   Column,
 } from "typeorm";
+import { TaskEntity } from "./task.entity";
 import { CategoryEntity } from "./category.entity";
-import { UserEntity } from "./user.entity";
 
-@Entity("user_categories")
-export class UserCategoryEntity {
+@Entity("task_categories")
+export class TaskCategoryEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.userCategories)
-  @JoinColumn({ name: "userId" })
-  user: UserEntity;
+  @ManyToOne(() => TaskEntity, (task) => task.taskCategories)
+  @JoinColumn({ name: "taskId" })
+  task: TaskEntity;
 
   @Column()
-  userId: number;
+  taskId: number;
 
-  @ManyToOne(() => CategoryEntity, (category) => category.userCategories)
+  @ManyToOne(() => CategoryEntity, (category) => category.taskCategories)
   @JoinColumn({ name: "categoryId" })
   category: CategoryEntity;
 

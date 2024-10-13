@@ -3,20 +3,22 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
   Index,
   JoinColumn,
 } from "typeorm";
-import { CategoryEntity } from "./category.entity";
 import { UserEntity } from "./user.entity";
-import { TaskStatus } from "src/domain/models/enum/task.status.enum";
+import { TaskStatus } from "../../../domain/models/enum/task.status.enum";
+import { TaskCategoryEntity } from "./taskCategory.entity";
+
 @Entity("tasks")
 @Index("idx_tasks_user_id", ["user"])
 @Index("idx_tasks_uuid", ["uuid"], { unique: true })
-@Index("idx_tasks_category_id", ["category"])
 @Index("idx_tasks_status", ["status"])
 @Index("idx_tasks_deadline", ["deadline"])
+@Index("idx_tasks_title_description", ["title", "description"])
 export class TaskEntity {
   @PrimaryGeneratedColumn()
   id: number;
@@ -50,12 +52,8 @@ export class TaskEntity {
   @Column()
   userId: number;
 
-  @ManyToOne(() => CategoryEntity)
-  @JoinColumn({ name: "categoryId" })
-  category: CategoryEntity;
-
-  @Column()
-  categoryId: number;
+  @OneToMany(() => TaskCategoryEntity, (taskCategory) => taskCategory.task)
+  taskCategories: TaskCategoryEntity[];
 
   @CreateDateColumn()
   createdAt: Date;

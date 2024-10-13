@@ -4,6 +4,7 @@ import { Queue } from "bull";
 import { Reminder } from "src/domain/models/reminder.model";
 import { DataAccessLayer } from "src/infra/database/data-access-layer";
 import { EmailService } from "../email/email.service";
+import { QueueJobNames, QueueNames } from "src/domain/queues/queue-names";
 
 @Injectable()
 export class ReminderService {
@@ -12,26 +13,31 @@ export class ReminderService {
   constructor(
     private readonly dal: DataAccessLayer,
     private readonly emailService: EmailService,
-    @InjectQueue("taskReminder") private taskReminderQueue: Queue,
-  ) {}
+    @InjectQueue(QueueNames.TaskReminderQueue) private taskReminderQueue: Queue,
+  ) { }
 
-  async createReminder(taskId: number, reminderTime: Date): Promise<Reminder> {
-    const reminder = Reminder.create(taskId, reminderTime);
-    const createdReminder = await this.dal.reminder.createReminder(reminder);
+  async createReminder(taskId: number, reminderTime: Date) {
+    const reminderTimeUTC = new Date(reminderTime.toUTCString());
+    const currentTimeUTC = new Date();
+    const delay = reminderTimeUTC.getTime() - currentTimeUTC.getTime();
 
-    const delay = reminderTime.getTime() - Date.now();
-    if (delay > 0) {
-      await this.taskReminderQueue.add(
-        "sendReminder",
-        {
-          taskId: createdReminder.taskId,
-          reminderId: createdReminder.uuid,
-        },
-        { delay },
-      );
+    if (delay < 0) {
+      this.logger.warn(`Reminder time is in the past, not adding to queue`);
+      return;
     }
 
-    return createdReminder;
+    const reminder = Reminder.create(taskId, reminderTime);
+
+    const createdReminder = await this.dal.reminder.createReminder(reminder);
+    await this.taskReminderQueue.add(
+      QueueJobNames.SendTaskReminderJob,
+      {
+        taskId: createdReminder.taskId,
+        reminderId: createdReminder.uuid,
+      },
+      { delay },
+    );
+    this.logger.log(`Reminder added to queue successfully`);
   }
 
   async processReminder(taskId: number, reminderId: string): Promise<void> {

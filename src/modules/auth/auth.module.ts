@@ -4,12 +4,16 @@ import { JwtModule } from "@nestjs/jwt";
 import { AuthService } from "./auth.service";
 import { DataAccessModule } from "../../infra/database/dal.module";
 import { UserModule } from "../users/user.module";
+import { AuthController } from "./auth.controller";
+import { PassportModule } from "@nestjs/passport";
+import { JwtStrategy } from "src/jwt/jwt.strategy";
 
 @Module({
   imports: [
     DataAccessModule,
     ConfigModule,
     UserModule,
+    PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -21,7 +25,8 @@ import { UserModule } from "../users/user.module";
       inject: [ConfigService],
     }),
   ],
-  providers: [AuthService],
+  providers: [JwtStrategy, AuthService],
   exports: [AuthService],
+  controllers: [AuthController],
 })
-export class AuthModule { }
+export class AuthModule {}

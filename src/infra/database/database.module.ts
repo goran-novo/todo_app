@@ -16,7 +16,6 @@ export class DatabaseModule {
             if (!AppDataSource.isInitialized) {
               await AppDataSource.initialize();
             }
-            console.log("Data Source has been initialized!");
             return AppDataSource;
           },
         },

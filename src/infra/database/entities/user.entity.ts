@@ -8,7 +8,6 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { TaskEntity } from "./task.entity";
-import { UserCategoryEntity } from "./userCategory.entity";
 
 @Entity("users")
 export class UserEntity {
@@ -26,9 +25,6 @@ export class UserEntity {
 
   @OneToMany(() => TaskEntity, (task) => task.user)
   tasks: TaskEntity[];
-
-  @OneToMany(() => UserCategoryEntity, (userCategory) => userCategory.user)
-  userCategories: UserCategoryEntity[];
 
   @CreateDateColumn()
   createdAt: Date;

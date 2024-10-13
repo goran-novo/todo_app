@@ -5,7 +5,7 @@ export class ReminderMapper {
   static toDomain(entity: ReminderEntity): Reminder {
     return new Reminder(
       entity.uuid,
-      entity.task.id,
+      entity.taskId,
       entity.reminderTime,
       entity.sent,
       entity.id,

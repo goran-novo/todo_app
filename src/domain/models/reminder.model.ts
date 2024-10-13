@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 export class Reminder {
-  private _id: number | null;
+  private _id: number;
 
   constructor(
     public readonly uuid: string,
@@ -10,7 +10,7 @@ export class Reminder {
     public sent: boolean,
     id?: number,
   ) {
-    this._id = id || null;
+    this._id = id || -1;
   }
 
   static create(taskId: number, reminderTime: Date): Reminder {
@@ -21,7 +21,7 @@ export class Reminder {
     this.sent = true;
   }
 
-  get id(): number | null {
+  get id(): number {
     return this._id;
   }
 }

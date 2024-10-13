@@ -9,9 +9,9 @@ export class ReminderRepository extends GenericRepository<ReminderEntity> {
     super(ReminderEntity, dataSource);
   }
 
-  async findReminder(taskUuid: string): Promise<Reminder | null> {
+  async findReminder(reminderUuid: string): Promise<Reminder | null> {
     const reminderEntity = await this.repository.findOne({
-      where: { task: { uuid: taskUuid } },
+      where: { uuid: reminderUuid },
       relations: ["task"],
     });
 
@@ -22,7 +22,7 @@ export class ReminderRepository extends GenericRepository<ReminderEntity> {
     const reminderEntity = ReminderMapper.toEntity(
       Reminder.create(reminder.taskId, reminder.reminderTime),
     );
-    const savedEntity = await this.create(reminderEntity);
+    const savedEntity = await this.repository.save(reminderEntity);
     return ReminderMapper.toDomain(savedEntity);
   }
 
@@ -47,6 +47,11 @@ export class ReminderRepository extends GenericRepository<ReminderEntity> {
   }
 
   async markReminderAsSent(uuid: string): Promise<void> {
-    await this.repository.update(uuid, { sent: true });
+    await this.repository
+      .createQueryBuilder()
+      .update(ReminderEntity)
+      .set({ sent: true })
+      .where("uuid = :uuid", { uuid })
+      .execute();
   }
 }

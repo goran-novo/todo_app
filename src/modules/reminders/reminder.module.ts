@@ -2,15 +2,14 @@ import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bull";
 import { ReminderService } from "./reminder.service";
 import { ReminderProcessor } from "./reminder.processor";
-import { EmailModule } from "../email/email.module"; // Adjust this import path as necessary
-import { DataAccessLayer } from "src/infra/database/data-access-layer";
+import { EmailModule } from "../email/email.module";
+import { QueueNames } from "src/domain/queues/queue-names";
 
 @Module({
   imports: [
     BullModule.registerQueue({
-      name: "taskReminder",
+      name: QueueNames.TaskReminderQueue,
     }),
-    DataAccessLayer,
     EmailModule,
   ],
   providers: [ReminderService, ReminderProcessor],

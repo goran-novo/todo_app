@@ -8,7 +8,7 @@ export class CategoryMapper {
 
   static toEntity(
     category: Category,
-  ): Omit<CategoryEntity, "id" | "tasks" | "userCategories"> & { id?: number } {
+  ): Omit<CategoryEntity, "id" | "taskCategories"> & { id?: number } {
     return {
       uuid: category.uuid,
       name: category.name,

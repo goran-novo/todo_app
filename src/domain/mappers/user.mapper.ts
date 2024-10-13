@@ -1,5 +1,6 @@
 import { UserEntity } from "src/infra/database/entities/user.entity";
 import { User } from "../models/user.model";
+import { UserDTO } from "../dtos/user.dto";
 
 export class UserMapper {
   static toDomain(entity: UserEntity): User {
@@ -18,5 +19,9 @@ export class UserMapper {
       password: user.getPasswordHash(),
       id: user.id || undefined,
     };
+  }
+
+  static toDto(user: User): UserDTO {
+    return new UserDTO(user);
   }
 }

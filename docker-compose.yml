@@ -13,6 +13,7 @@ services:
       - DB_NAME=todo
       - REDIS_HOST=redis
       - APP_ENV=develop
+      - TZ=UTC
     depends_on:
       db:
         condition: service_healthy
@@ -21,6 +22,7 @@ services:
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
+
     command: npm run start:dev
     networks:
       - backend
@@ -33,9 +35,12 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=reallyadmin
       - POSTGRES_DB=todo
+      - TZ=UTC
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     command:
       - "postgres"
       - "-c"
@@ -56,6 +61,10 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TZ=UTC
     networks:
       - backend
     healthcheck:

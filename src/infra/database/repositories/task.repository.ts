@@ -4,25 +4,62 @@ import { DataSource, Between, LessThan, In } from "typeorm";
 import { TaskEntity } from "../entities/task.entity";
 import { GenericRepository } from "./generic.repository";
 import { TaskStatus } from "src/domain/models/enum/task.status.enum";
+import { TaskCategoryEntity } from "../entities/taskCategory.entity";
 
 export class TaskRepository extends GenericRepository<TaskEntity> {
   constructor(dataSource: DataSource) {
     super(TaskEntity, dataSource);
   }
 
-  async createTask(task: Omit<Task, "id">): Promise<Task> {
+  async createTaskWithCategories(
+    task: Omit<Task, "id">,
+    categoryIds: number[],
+  ): Promise<Task> {
     const taskEntity = TaskMapper.toEntity(
       Task.create(
         task.title,
         task.description,
         task.userId,
-        task.categoryId,
         task.deadline,
         task.reminderTime,
       ),
     );
-    const savedEntity = await this.create(taskEntity);
-    return TaskMapper.toDomain(savedEntity);
+
+    const savedTask = await this.dataSource.transaction(
+      async (transactionalEntityManager) => {
+        const savedTaskEntity = await transactionalEntityManager.save(
+          TaskEntity,
+          taskEntity,
+        );
+
+        const taskCategories = categoryIds.map((categoryId) => ({
+          taskId: savedTaskEntity.id,
+          categoryId: categoryId,
+        }));
+
+        await transactionalEntityManager.insert(
+          TaskCategoryEntity,
+          taskCategories,
+        );
+
+        return savedTaskEntity;
+      },
+    );
+
+    return TaskMapper.toDomain(savedTask);
+  }
+
+  async getTaskByUuidAndUser(
+    uuid: string,
+    userId: number,
+  ): Promise<Task | null> {
+    const taskEntity = await this.repository.findOne({
+      where: {
+        uuid: uuid,
+        userId: userId,
+      },
+    });
+    return taskEntity ? TaskMapper.toDomain(taskEntity) : null;
   }
 
   async getTasksByUser(userId: number): Promise<Task[]> {
@@ -49,21 +86,74 @@ export class TaskRepository extends GenericRepository<TaskEntity> {
     return taskEntities.map(TaskMapper.toDomain);
   }
 
-  async getTasksByDeadlineRange(start: Date, end: Date): Promise<Task[]> {
+  async addCategoriesToTask(
+    taskId: number,
+    categoryIds: number[],
+  ): Promise<void> {
+    const taskCategories = categoryIds.map((categoryId) => ({
+      taskId,
+      categoryId,
+    }));
+
+    await this.dataSource
+      .createQueryBuilder()
+      .insert()
+      .into(TaskCategoryEntity)
+      .values(taskCategories)
+      .orIgnore()
+      .execute();
+  }
+
+  async removeCategoriesFromTask(
+    taskId: number,
+    categoryIds: number[],
+  ): Promise<void> {
+    await this.dataSource
+      .createQueryBuilder()
+      .delete()
+      .from(TaskCategoryEntity)
+      .where("taskId = :taskId AND categoryId IN (:...categoryIds)", {
+        taskId,
+        categoryIds,
+      })
+      .execute();
+  }
+
+  async getTaskCategories(taskId: number): Promise<number[]> {
+    const taskCategories = await this.dataSource
+      .getRepository(TaskCategoryEntity)
+      .find({
+        where: { taskId },
+      });
+    return taskCategories.map((tc) => tc.categoryId);
+  }
+
+  async getTasksByDeadlineRange(
+    userId: number,
+    start: Date,
+    end: Date,
+  ): Promise<Task[]> {
     const taskEntities = await this.repository.find({
-      where: { deadline: Between(start, end) },
-      relations: ["user", "category"],
+      where: {
+        userId: userId,
+        deadline: Between(start, end),
+      },
+      relations: ["user"],
     });
+
     return taskEntities.map(TaskMapper.toDomain);
   }
 
-  async searchTasksByTitle(query: string): Promise<Task[]> {
+  async searchTasks(query: string, userId: number): Promise<Task[]> {
     const taskEntities = await this.repository
       .createQueryBuilder("task")
-      .where("to_tsvector(task.title) @@ plainto_tsquery(:query)", { query })
-      .leftJoinAndSelect("task.user", "user")
-      .leftJoinAndSelect("task.category", "category")
+      .where("task.userId = :userId", { userId })
+      .andWhere(
+        "to_tsvector(task.title || ' ' || task.description) @@ plainto_tsquery(:query)",
+        { query },
+      )
       .getMany();
+
     return taskEntities.map(TaskMapper.toDomain);
   }
 
