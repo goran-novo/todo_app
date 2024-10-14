@@ -15,7 +15,7 @@ export class TaskArchiveProcessor {
   constructor(
     private readonly dal: DataAccessLayer,
     private readonly eventEmitter: EventEmitter2,
-  ) { }
+  ) {}
 
   @Process(QueueJobNames.ArchiveTaskJob)
   async handleArchiveTask(job: Job<{ task: Task }>) {

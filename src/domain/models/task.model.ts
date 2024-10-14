@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { TaskStatus } from "./enum/task.status.enum";
 import { v4 as uuidv4 } from "uuid";
 
@@ -17,6 +18,7 @@ export class Task {
     this._id = id || -1;
     this.deadline = Task.ensureDate(deadline);
     this.reminderTime = Task.ensureDate(reminderTime);
+    this.validateReminderAndDeadline();
   }
 
   static create(
@@ -54,5 +56,15 @@ export class Task {
       return isNaN(date.getTime()) ? null : date;
     }
     return null;
+  }
+
+  private validateReminderAndDeadline(): void {
+    if (this.reminderTime && this.deadline) {
+      if (this.reminderTime >= this.deadline) {
+        throw new BadRequestException(
+          "Reminder time must be before the deadline",
+        );
+      }
+    }
   }
 }

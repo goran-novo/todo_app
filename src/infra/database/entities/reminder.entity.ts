@@ -4,9 +4,11 @@ import {
   ManyToOne,
   Column,
   JoinColumn,
+  Index,
 } from "typeorm";
 import { TaskEntity } from "./task.entity";
 
+@Index("idx_reminder_uuid", ["uuid"], { unique: true })
 @Entity("reminders")
 export class ReminderEntity {
   @PrimaryGeneratedColumn()

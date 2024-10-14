@@ -40,7 +40,7 @@ import { TaskMapper } from "src/domain/mappers/task.mapper";
 @Controller("tasks")
 @UseGuards(JwtAuthGuard)
 export class TaskController {
-  constructor(private readonly taskService: TaskService) { }
+  constructor(private readonly taskService: TaskService) {}
 
   @Post()
   @ApiOperation({ summary: "Create a new task" })
@@ -63,7 +63,6 @@ export class TaskController {
     @Param("uuid") taskUuid: string,
     @Body() updateTaskStatusDto: UpdateTaskStatusDto,
   ): Promise<TaskResponseDto> {
-
     const task = await this.taskService.updateTaskStatus(
       userId,
       taskUuid,

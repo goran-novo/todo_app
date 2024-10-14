@@ -4,8 +4,6 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
-process.env.TZ = 'UTC';
-
 async function bootstrap() {
   const envPath = path.join(process.cwd(), '.env');
   dotenv.config({ path: envPath });

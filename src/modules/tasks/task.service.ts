@@ -29,24 +29,9 @@ export class TaskService {
     private readonly categoryService: CategoryService,
     private readonly eventEmitter: EventEmitter2,
     @InjectQueue(QueueNames.TaskArchivingQueue) private taskArchiveQueue: Queue,
-  ) { }
+  ) {}
 
   async createTask(userId: number, taskData: CreateTaskDto): Promise<Task> {
-    if (taskData.reminderTime && taskData.deadline) {
-      if (taskData.reminderTime >= taskData.deadline) {
-        throw new BadRequestException(
-          "Reminder time must be before the deadline",
-        );
-      }
-    }
-
-    let categories: Category[] = [];
-    if (taskData.categoryNames && taskData.categoryNames.length > 0) {
-      categories = await this.categoryService.findOrCreateCategories(
-        taskData.categoryNames,
-      );
-    }
-
     const task = Task.create(
       taskData.title,
       taskData.description || null,
@@ -54,18 +39,33 @@ export class TaskService {
       taskData.deadline,
       taskData.reminderTime,
     );
+    const categories = await this.getCategoriesForTask(taskData.categoryNames);
+    const createdTask = await this.saveTaskWithCategories(task, categories);
+    this.emitTaskCreatedEvent(createdTask);
+    return createdTask;
+  }
 
-    const createdTask = await this.dal.task.createTaskWithCategories(
+  private async getCategoriesForTask(
+    categoryNames?: string[],
+  ): Promise<Category[]> {
+    if (categoryNames && categoryNames.length > 0) {
+      return this.categoryService.findOrCreateCategories(categoryNames);
+    }
+    return [];
+  }
+
+  private async saveTaskWithCategories(
+    task: Task,
+    categories: Category[],
+  ): Promise<Task> {
+    return this.dal.task.createTaskWithCategories(
       task,
       categories.map((c) => c.id),
     );
+  }
 
-    this.eventEmitter.emit(
-      EventNames.TaskCreated,
-      new TaskCreatedEvent(createdTask),
-    );
-
-    return createdTask;
+  private emitTaskCreatedEvent(task: Task): void {
+    this.eventEmitter.emit(EventNames.TaskCreated, new TaskCreatedEvent(task));
   }
 
   async updateTaskStatus(
@@ -176,8 +176,9 @@ export class TaskService {
         { task },
         { delay: archiveDelay },
       );
-      this.logger.log(
-        `Archive job scheduled for task ${task.id} with job ID ${job.id}`,
+      const archiveTime = new Date(now.getTime() + archiveDelay);
+      this.logger.debug(
+        `Archive job scheduled for task ${task.id} [redis jobID:${job.id}]. Will be executed at: ${archiveTime.toISOString()}`,
       );
     } catch (error) {
       this.logger.error(
@@ -202,7 +203,6 @@ export class TaskService {
 
     try {
       await this.reminderService.createReminder(task.id, task.reminderTime);
-      this.logger.log(`Reminder created successfully for task ${task.id}`);
     } catch (error) {
       this.logger.error(`Failed to create reminder for task ${task.id}`, error);
     }

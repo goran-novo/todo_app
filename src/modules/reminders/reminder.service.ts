@@ -5,6 +5,8 @@ import { Reminder } from "src/domain/models/reminder.model";
 import { DataAccessLayer } from "src/infra/database/data-access-layer";
 import { EmailService } from "../email/email.service";
 import { QueueJobNames, QueueNames } from "src/domain/queues/queue-names";
+import { format, parseISO } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
 @Injectable()
 export class ReminderService {
@@ -14,21 +16,33 @@ export class ReminderService {
     private readonly dal: DataAccessLayer,
     private readonly emailService: EmailService,
     @InjectQueue(QueueNames.TaskReminderQueue) private taskReminderQueue: Queue,
-  ) { }
+  ) {}
 
-  async createReminder(taskId: number, reminderTime: Date) {
-    const reminderTimeUTC = new Date(reminderTime.toUTCString());
-    const currentTimeUTC = new Date();
-    const delay = reminderTimeUTC.getTime() - currentTimeUTC.getTime();
+  async createReminder(
+    taskId: number,
+    reminderTime: string | Date,
+    timezone: string = "Europe/Berlin",
+  ) {
+    const localReminderTime: Date =
+      typeof reminderTime === "string" ? parseISO(reminderTime) : reminderTime;
+
+    const utcReminderTime: Date = fromZonedTime(localReminderTime, timezone);
+    const currentTimeUTC: Date = new Date();
+
+    const delay = utcReminderTime.getTime() - currentTimeUTC.getTime();
 
     if (delay < 0) {
-      this.logger.warn(`Reminder time is in the past, not adding to queue`);
+      this.logger.warn("Reminder time is in the past, not adding to queue");
       return;
     }
 
-    const reminder = Reminder.create(taskId, reminderTime);
+    const reminder = Reminder.create(taskId, utcReminderTime);
+    if (!reminder) {
+      throw new Error("Failed to create reminder");
+    }
 
     const createdReminder = await this.dal.reminder.createReminder(reminder);
+
     await this.taskReminderQueue.add(
       QueueJobNames.SendTaskReminderJob,
       {
@@ -37,7 +51,10 @@ export class ReminderService {
       },
       { delay },
     );
-    this.logger.log(`Reminder added to queue successfully`);
+    this.logger.debug(`Reminder added to queue with delay ${delay} ms`);
+    this.logger.debug(
+      `Reminder will be sent at (UTC): ${format(utcReminderTime, "yyyy-MM-dd HH:mm:ssXXX")}`,
+    );
   }
 
   async processReminder(taskId: number, reminderId: string): Promise<void> {
